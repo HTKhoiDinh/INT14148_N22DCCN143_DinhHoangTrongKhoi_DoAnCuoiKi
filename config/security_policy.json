@@ -1,0 +1,26 @@
+{
+  "only_select": true,
+  "block_multiple_statements": true,
+
+  "forbidden_keywords": [
+    "DROP",
+    "TRUNCATE",
+    "DELETE",
+    "UPDATE",
+    "INSERT",
+    "ALTER",
+    "CREATE",
+    "EXEC",
+    "UNION"
+  ],
+
+  "forbidden_patterns": [
+    "--",
+    "/*",
+    "*/",
+    "OR 1=1",
+    "OR TRUE",
+    "OR '1'='1'",
+    "OR 'a'='a"
+  ]
+}

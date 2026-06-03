@@ -1,17 +1,55 @@
-def get_site(emp_id):
+from middleware.config_loader import load_fragment_config
+
+
+def get_fragment(table_name, key_value):
     """
-    Horizontal fragmentation:
-    Site 1: ID 1 -> 1000
-    Site 2: ID 1001 -> 2000
+    Find the distributed fragment that contains the requested key value.
+
+    Example:
+    table_name = "Employee"
+    key_value = 1500
+    => site2
     """
 
-    if emp_id is None:
+    fragment_config = load_fragment_config()
+
+    if table_name not in fragment_config:
         return None
 
-    if 1 <= emp_id <= 1000:
-        return 1
+    fragments = fragment_config[table_name]
 
-    if 1001 <= emp_id <= 2000:
-        return 2
+    for fragment in fragments:
+        min_value = fragment["min"]
+        max_value = fragment["max"]
+
+        if min_value <= key_value <= max_value:
+            return fragment
 
     return None
+
+
+def get_site(emp_id):
+    """
+    Backward-compatible function for old code.
+    Returns only site_id.
+    """
+
+    fragment = get_fragment("Employee", emp_id)
+
+    if fragment is None:
+        return None
+
+    return fragment["site_id"]
+
+
+def get_db_path(table_name, key_value):
+    """
+    Return db_path based on fragment metadata.
+    """
+
+    fragment = get_fragment(table_name, key_value)
+
+    if fragment is None:
+        return None
+
+    return fragment["db_path"]

@@ -1,71 +1,88 @@
 import re
 
-
-FORBIDDEN_PATTERNS = [
-    r"\bDROP\b",
-    r"\bTRUNCATE\b",
-    r"\bUNION\b",
-    r"--",
-    r"/\*",
-    r"\*/",
-    r"\bDELETE\b",
-    r"\bUPDATE\b",
-    r"\bINSERT\b",
-    r"\bALTER\b",
-    r"\bCREATE\b",
-    r"\bEXEC\b",
-
-    # Boolean-based SQL Injection
-    r"\bOR\s+1\s*=\s*1\b",
-    r"\bOR\s+TRUE\b",
-    r"\bOR\s+'1'\s*=\s*'1'",
-    r"\bOR\s+'a'\s*=\s*'a'",
-    r"\bOR\s+'.+'\s*=\s*'.+'",
-]
+from middleware.config_loader import load_security_policy
 
 
 def normalize_sql(sql):
+    if sql is None:
+        return ""
+
     return " ".join(sql.strip().split())
 
 
 def is_select_query(sql):
     normalized = normalize_sql(sql).upper()
+
     return normalized.startswith("SELECT")
 
 
 def has_multiple_statements(sql):
-    """
-    Cho phép dấu ; ở cuối câu.
-    Chặn nếu có nhiều câu SQL nối tiếp nhau.
-    """
     sql = sql.strip()
 
     if ";" not in sql:
         return False
 
+    # Cho phép 1 dấu ; ở cuối câu SELECT
     if sql.endswith(";") and sql.count(";") == 1:
         return False
 
     return True
 
 
-def detect(sql):
-    """
-    Trả về True nếu phát hiện SQL nguy hiểm.
-    Hàm này giữ lại để evaluate.py dùng.
-    """
-    result = analyze_sql(sql)
-    return not result["allowed"]
+def contains_forbidden_keyword(sql, keywords):
+    upper_sql = sql.upper()
+
+    for keyword in keywords:
+        pattern = r"\b" + re.escape(keyword.upper()) + r"\b"
+
+        if re.search(pattern, upper_sql):
+            return keyword
+
+    return None
+
+
+def contains_forbidden_pattern(sql, patterns):
+    upper_sql = sql.upper()
+
+    for pattern in patterns:
+        escaped_pattern = pattern.upper()
+
+        # Một số pattern cần regex linh hoạt hơn
+        if escaped_pattern == "OR 1=1":
+            if re.search(r"\bOR\s+1\s*=\s*1\b", upper_sql):
+                return pattern
+
+        elif escaped_pattern == "OR TRUE":
+            if re.search(r"\bOR\s+TRUE\b", upper_sql):
+                return pattern
+
+        elif escaped_pattern == "OR '1'='1'":
+            if re.search(r"\bOR\s+'1'\s*=\s*'1'", upper_sql):
+                return pattern
+
+        elif escaped_pattern == "OR 'A'='A":
+            if re.search(r"\bOR\s+'A'\s*=\s*'A'", upper_sql):
+                return pattern
+
+        else:
+            if escaped_pattern in upper_sql:
+                return pattern
+
+    return None
 
 
 def analyze_sql(sql):
     """
-    Trả về thông tin chi tiết:
+    Analyze SQL query based on config/security_policy.json.
+
+    Return:
     {
         "allowed": True/False,
         "reason": "..."
     }
     """
+
+    policy = load_security_policy()
 
     if sql is None or sql.strip() == "":
         return {
@@ -74,28 +91,55 @@ def analyze_sql(sql):
         }
 
     normalized = normalize_sql(sql)
-    upper_sql = normalized.upper()
 
-    if not is_select_query(upper_sql):
-        return {
-            "allowed": False,
-            "reason": "ONLY_SELECT_ALLOWED"
-        }
-
-    if has_multiple_statements(normalized):
-        return {
-            "allowed": False,
-            "reason": "MULTIPLE_SQL_STATEMENTS"
-        }
-
-    for pattern in FORBIDDEN_PATTERNS:
-        if re.search(pattern, upper_sql, re.IGNORECASE):
+    if policy.get("only_select", True):
+        if not is_select_query(normalized):
             return {
                 "allowed": False,
-                "reason": f"FORBIDDEN_PATTERN: {pattern}"
+                "reason": "ONLY_SELECT_ALLOWED"
             }
+
+    if policy.get("block_multiple_statements", True):
+        if has_multiple_statements(normalized):
+            return {
+                "allowed": False,
+                "reason": "MULTIPLE_SQL_STATEMENTS"
+            }
+
+    keyword = contains_forbidden_keyword(
+        normalized,
+        policy.get("forbidden_keywords", [])
+    )
+
+    if keyword is not None:
+        return {
+            "allowed": False,
+            "reason": f"FORBIDDEN_KEYWORD: {keyword}"
+        }
+
+    pattern = contains_forbidden_pattern(
+        normalized,
+        policy.get("forbidden_patterns", [])
+    )
+
+    if pattern is not None:
+        return {
+            "allowed": False,
+            "reason": f"FORBIDDEN_PATTERN: {pattern}"
+        }
 
     return {
         "allowed": True,
         "reason": "SAFE_QUERY"
     }
+
+
+def detect(sql):
+    """
+    Compatibility function for evaluation.
+    Return True if query should be blocked.
+    """
+
+    result = analyze_sql(sql)
+
+    return not result["allowed"]

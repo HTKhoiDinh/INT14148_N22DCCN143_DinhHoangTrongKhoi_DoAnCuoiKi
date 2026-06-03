@@ -50,7 +50,17 @@
                 {% if site %}
                 <tr>
                     <th>Distributed Site</th>
-                    <td>Site {{ site }}</td>
+                    <td>{{ site["site"] }} / Site ID {{ site["site_id"] }}</td>
+                </tr>
+
+                <tr>
+                    <th>Database Path</th>
+                    <td>{{ site["db_path"] }}</td>
+                </tr>
+
+                <tr>
+                    <th>Fragment Range</th>
+                    <td>{{ site["fragment_key"] }} between {{ site["min"] }} and {{ site["max"] }}</td>
                 </tr>
                 {% endif %}
 
@@ -66,12 +76,22 @@
                     <th>ID</th>
                     <th>Name</th>
                     <th>Department</th>
+                    <th>Region</th>
+                    <th>Salary</th>
+                    <th>TaxCode</th>
+                    <th>HealthStatus</th>
+                    <th>BankAccount</th>
                 </tr>
 
                 <tr>
                     <td>{{ employee[0] }}</td>
                     <td>{{ employee[1] }}</td>
                     <td>{{ employee[2] }}</td>
+                    <td>{{ employee[3] }}</td>
+                    <td>{{ employee[4] }}</td>
+                    <td>{{ employee[5] }}</td>
+                    <td>{{ employee[6] }}</td>
+                    <td>{{ employee[7] }}</td>
                 </tr>
 
             </table>

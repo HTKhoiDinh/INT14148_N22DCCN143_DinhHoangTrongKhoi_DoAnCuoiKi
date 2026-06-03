@@ -1,0 +1,28 @@
+{
+  "Employee": [
+    {
+      "site": "site1",
+      "site_id": 1,
+      "db_path": "database/site1.db",
+      "fragment_key": "ID",
+      "min": 1,
+      "max": 1000
+    },
+    {
+      "site": "site2",
+      "site_id": 2,
+      "db_path": "database/site2.db",
+      "fragment_key": "ID",
+      "min": 1001,
+      "max": 2000
+    },
+    {
+      "site": "site3",
+      "site_id": 3,
+      "db_path": "database/site3.db",
+      "fragment_key": "ID",
+      "min": 2001,
+      "max": 3000
+    }
+  ]
+}

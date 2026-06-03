@@ -1,33 +1,38 @@
 import sqlite3
 
 
-def get_database_path(site):
-    if site == 1:
-        return "database/site1.db"
-
-    if site == 2:
-        return "database/site2.db"
-
-    return None
-
-
-def execute_query(site, emp_id):
+def execute_query(fragment, emp_id):
     """
-    Không chạy raw SQL trực tiếp.
-    Chỉ chạy parameterized query để tránh SQL Injection.
+    Execute a safe parameterized query on the selected distributed fragment.
+
+    The middleware does NOT execute the raw SQL from the user.
+    It only uses:
+    - db_path from fragment_config.json
+    - emp_id extracted by parser
     """
 
-    db_path = get_database_path(site)
-
-    if db_path is None:
+    if fragment is None:
         return None
 
-    conn = sqlite3.connect(db_path)
+    db_path = fragment["db_path"]
 
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT ID, Name, Department FROM Employee WHERE ID = ?",
+        """
+        SELECT
+            ID,
+            Name,
+            Department,
+            Region,
+            Salary,
+            TaxCode,
+            HealthStatus,
+            BankAccount
+        FROM Employee
+        WHERE ID = ?
+        """,
         (emp_id,)
     )
 

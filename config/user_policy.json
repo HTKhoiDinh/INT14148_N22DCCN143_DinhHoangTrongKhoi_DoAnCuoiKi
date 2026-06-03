@@ -1,0 +1,7 @@
+{
+  "alice": ["site1"],
+  "bob": ["site2"],
+  "charlie": ["site3"],
+  "auditor": ["site1", "site2", "site3"],
+  "admin": ["site1", "site2", "site3"]
+}

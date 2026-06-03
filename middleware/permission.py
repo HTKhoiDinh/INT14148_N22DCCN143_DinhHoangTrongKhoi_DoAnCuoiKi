@@ -1,20 +1,27 @@
-permissions = {
-    "alice": [1],
-    "bob": [2],
-    "admin": [1, 2]
-}
+from middleware.config_loader import load_user_policy
 
 
-def allowed(user, site):
-    if user is None:
+def allowed(user, fragment):
+    """
+    Check whether a user can access a distributed fragment.
+
+    user: alice, bob, charlie, auditor, admin
+    fragment: dictionary from fragment_config.json
+    """
+
+    if user is None or fragment is None:
         return False
 
     user = user.strip().lower()
 
-    if user not in permissions:
+    user_policy = load_user_policy()
+
+    if user not in user_policy:
         return False
 
-    return site in permissions[user]
+    allowed_sites = user_policy[user]
+
+    return fragment["site"] in allowed_sites
 
 
 def get_user_sites(user):
@@ -23,4 +30,6 @@ def get_user_sites(user):
 
     user = user.strip().lower()
 
-    return permissions.get(user, [])
+    user_policy = load_user_policy()
+
+    return user_policy.get(user, [])

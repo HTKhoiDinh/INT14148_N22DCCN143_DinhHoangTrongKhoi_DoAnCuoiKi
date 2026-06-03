@@ -2,7 +2,7 @@ from flask import Flask, render_template, request
 
 from middleware.detector import analyze_sql
 from middleware.parser import extract_id
-from middleware.router import get_site
+from middleware.router import get_fragment
 from middleware.permission import allowed
 from middleware.executor import execute_query
 from middleware.logger import write_log
@@ -22,7 +22,7 @@ def query():
     user = request.form.get("user", "").strip().lower()
     sql = request.form.get("sql", "").strip()
 
-    # 1. SQL Injection / Forbidden Pattern Detection
+    # 1. Security policy check
     analysis = analyze_sql(sql)
 
     if not analysis["allowed"]:
@@ -30,7 +30,7 @@ def query():
         write_log(
             user=user,
             sql=sql,
-            result="BLOCKED",
+            result="BLOCKED_MALICIOUS",
             reason=analysis["reason"]
         )
 
@@ -38,7 +38,7 @@ def query():
             "result.html",
             status="BLOCKED",
             color="danger",
-            message="SQL Injection or Forbidden Query Detected",
+            message="SQL Injection or forbidden SQL pattern detected",
             reason=analysis["reason"],
             user=user,
             sql=sql,
@@ -46,7 +46,7 @@ def query():
             employee=None
         )
 
-    # 2. Parse Employee ID
+    # 2. Parse Employee ID from SQL
     emp_id = extract_id(sql)
 
     if emp_id is None:
@@ -54,15 +54,15 @@ def query():
         write_log(
             user=user,
             sql=sql,
-            result="BLOCKED",
+            result="REJECTED_UNSUPPORTED_QUERY",
             reason="CANNOT_EXTRACT_EMPLOYEE_ID"
         )
 
         return render_template(
             "result.html",
-            status="BLOCKED",
+            status="REJECTED",
             color="warning",
-            message="Cannot extract Employee ID from SQL query",
+            message="Unsupported SQL query format",
             reason="Query must contain condition like WHERE ID=100",
             user=user,
             sql=sql,
@@ -70,55 +70,55 @@ def query():
             employee=None
         )
 
-    # 3. Route to distributed fragment
-    site = get_site(emp_id)
+    # 3. Find distributed fragment from config
+    fragment = get_fragment("Employee", emp_id)
 
-    if site is None:
+    if fragment is None:
 
         write_log(
             user=user,
             sql=sql,
-            result="BLOCKED",
+            result="REJECTED_NO_FRAGMENT",
             reason="NO_FRAGMENT_FOUND"
         )
 
         return render_template(
             "result.html",
-            status="BLOCKED",
+            status="REJECTED",
             color="warning",
-            message="No distributed fragment found for this Employee ID",
-            reason="Employee ID must be in range 1-2000",
+            message="No distributed fragment found for this query",
+            reason="Employee ID does not belong to any configured fragment",
             user=user,
             sql=sql,
             site=None,
             employee=None
         )
 
-    # 4. Fragment Access Control
-    if not allowed(user, site):
+    # 4. User-fragment access control
+    if not allowed(user, fragment):
 
         write_log(
             user=user,
             sql=sql,
             result="ACCESS_DENIED",
             reason="UNAUTHORIZED_FRAGMENT_ACCESS",
-            site=site
+            site=fragment["site"]
         )
 
         return render_template(
             "result.html",
             status="ACCESS DENIED",
             color="danger",
-            message="Unauthorized Fragment Access",
-            reason=f"User '{user}' is not allowed to access Site {site}",
+            message="Unauthorized fragment access",
+            reason=f"User '{user}' is not allowed to access {fragment['site']}",
             user=user,
             sql=sql,
-            site=site,
+            site=fragment,
             employee=None
         )
 
-    # 5. Execute query
-    employee = execute_query(site, emp_id)
+    # 5. Execute safe parameterized query
+    employee = execute_query(fragment, emp_id)
 
     if employee is None:
 
@@ -127,18 +127,18 @@ def query():
             sql=sql,
             result="NOT_FOUND",
             reason="EMPLOYEE_NOT_FOUND",
-            site=site
+            site=fragment["site"]
         )
 
         return render_template(
             "result.html",
             status="NOT FOUND",
             color="secondary",
-            message="Employee Not Found",
-            reason="No record found in selected fragment",
+            message="Employee not found",
+            reason="No record found in selected distributed fragment",
             user=user,
             sql=sql,
-            site=site,
+            site=fragment,
             employee=None
         )
 
@@ -148,18 +148,18 @@ def query():
         sql=sql,
         result="ALLOWED",
         reason="QUERY_EXECUTED_SUCCESSFULLY",
-        site=site
+        site=fragment["site"]
     )
 
     return render_template(
         "result.html",
         status="ALLOWED",
         color="success",
-        message="Employee Found",
-        reason="Query passed all Query Guard checks",
+        message="Query passed all Query Guard checks",
+        reason="Query was routed and executed on the correct distributed site",
         user=user,
         sql=sql,
-        site=site,
+        site=fragment,
         employee=employee
     )
 

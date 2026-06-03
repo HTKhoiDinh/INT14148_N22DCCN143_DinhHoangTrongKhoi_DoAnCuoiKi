@@ -1,0 +1,13 @@
+Metric,Value
+Clean Queries,47
+Malicious Queries,51
+True Positive,50
+True Negative,47
+False Positive,0
+False Negative,1
+False Positive Rate,0.0
+False Negative Rate,0.0196078431372549
+Accuracy,0.9897959183673469
+Precision,1.0
+Recall,0.9803921568627451
+F1-score,0.99009900990099
