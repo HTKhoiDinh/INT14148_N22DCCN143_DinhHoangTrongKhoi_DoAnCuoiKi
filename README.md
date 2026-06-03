@@ -563,17 +563,8 @@ This design reduces dependence on predicting every possible malicious SQL string
 
 ---
 
-## 16. Authors
 
-Team Name:
-
-```text
-Query Guard Team
-```
-
----
-
-## 17. Repository
+## 16. Repository
 
 GitHub/GitLab Repository:
 
